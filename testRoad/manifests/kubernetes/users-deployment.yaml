@@ -1,0 +1,31 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    roadctlVersion: alphav1
+    pavedroad: www.pavedroad.io
+  creationTimestamp: null
+  labels:
+    pavedroad.service: users
+  name: users
+spec:
+  replicas: 3
+  strategy: {}
+  selector:
+    matchLabels:
+      pavedroad.service: users
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        pavedroad.service: users
+    spec:
+      containers:
+      - image: acme/users:0.0
+        name: users
+        ports:
+        - containerPort: 8081
+        resources: {}
+      restartPolicy: Always
+status: {}
