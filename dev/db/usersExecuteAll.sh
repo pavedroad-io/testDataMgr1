@@ -1,23 +1,74 @@
 
 #!/bin/bash
 
-CMD=`which cockroach`" sql"
+SQL="cockroach sql"
 PORT="26257"
-IP="127.0.0.1"
+HOST="127.0.0.1"
 USER="root"
+CMD=`echo $SQL "--insecure" --host=$HOST:$PORT`
 
-CMD=`echo $CMD "--insecure" --host=$IP:$PORT`
+buildCommand()
+{
+  CMD=`echo $SQL "--insecure" --host=$HOST:$PORT`
+}
 
-echo "$CMD"
+all()
+{
 
-#1 Create kevlarAdmin if it doesn not already exists
-$CMD < acmeAdmin.sql
+  echo "========================================"
+  echo " Initializing tables"
+  start=`date`
+  echo " Starting at : $start"
+  echo " Using: $CMD"
+  echo ""
 
-#2 Create kevlarWeb db
-$CMD < acme.sql
+# 1 Create acmeAdmin if it doesn not already exists
+  $CMD < acmeAdmin.sql
 
-#3 Create kevlarAdmin all on kevlarWeb db
-$CMD < acmeGrantAdmin.sql
+# 2 Create acmeWeb db
+  $CMD < acme.sql
 
-#4 Create prTokenTable 
-$CMD < usersCreateTable.sql
+# 3 Create Aacmedmin all on kevlarWeb db
+  $CMD < acmeGrantAdmin.sql
+
+# 4 Create acmeTable 
+  $CMD < usersCreateTable.sql
+}
+
+usage()
+{
+  echo "usage: acmeExecuteAll.sh -k |--k8s"
+  echo "    Created database and users as needed"
+  echo "    -k locates and posts to local k8s cluster"
+  echo "    it will default to $host on port $port"
+}
+
+## Main
+while [ "$1" != "" ]; do
+  case $1 in
+    -k | --k8s ) shift
+
+      if [ -z "$COCKROACH_HOST" ]
+      then
+        echo "COCKROACH_HOST must be set"
+        exit
+      else
+        HOST=$COCKROACH_HOST
+      fi
+
+      if [ -v "$COCKROACH_PORT" ]
+      then
+        PORT=$COCKROACH_PORT
+      fi
+      buildCommand
+      ;;
+  -h | --help ) usage
+    exit
+    ;;
+  * ) shift
+    ;;
+  esac
+done
+
+# call all
+all

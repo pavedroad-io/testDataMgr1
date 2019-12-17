@@ -138,6 +138,18 @@ can do `make compile` followed by `make check`
 To get an SQL prompt, use:
 	bin/sql.sh
 
+## dev/testXXXXX.sh scripts
+The following scripts work with your local docker images using 
+docker-compose or with the local microk8s cluster.  By default they
+use the local docker image.  To use the microk8s cluster, use the -k
+command line option/flag.
+
+- dev/testAll.sh
+- dev/testPost.sh
+- dev/testPut.sh
+- dev/testGet.sh
+- dev/testGetList.sh
+
 ## make
 Use **make help** to get a list of options
 make help
@@ -159,6 +171,29 @@ make help
     k8s-stop        Stop local k8s cluster and delete skaffold deployments
     k8s-status      Print the status of the local cluster up or down
     help            Print possible commands
+
+## skaffold CI/CD
+Skaffold is integrated into your project.  You can use the following commands:
+
+### development mode
+Monitors source code and when it changes builds and pushs a new image
+
+```bash
+skaffold dev -f manifests/skaffold.yaml
+```
+### run
+Builds and push image once when executed
+
+```bash
+skaffold run -f manifests/skaffold.yaml
+```
+  
+### delete
+Deletes all deployed resources
+
+```bash
+skaffold delete -f manifests/skaffold.yaml
+```
   
 ## Linter(s)
 Three lint applications are integrated to assist in code reviews.
@@ -166,6 +201,8 @@ Three lint applications are integrated to assist in code reviews.
 - Go lint checks for conformance with effective go programming recommendations and Go code review suggestions.
 - Gosec tests your code against go recommended security practices
 - Govet inspects code for constructs that might break.
+- FOSSA license scanner
+- SonarCloud scanner
 
 The location of each lint's output is below along with links to the rules they enforce.
 
@@ -182,3 +219,80 @@ artifacts/gosec.out
 artifacts/govet.out
 [Go vet rules](https://golang.org/cmd/vet/)
 
+### SonarCloud and FOSSA
+docs/service.html
+Badges for both with links to details can be found in the generated
+service.html in the docs directory.
+
+# SonarCloud
+SonarCloud provides free code analysis for open-source projects.  By default,
+the following tools are included:
+
+- quality gate
+- bugs
+- code smells
+- coverage
+- lines of code
+- duplicate lines of code
+- security
+- technical debt
+- vunlnerabilites
+
+
+Support for SonarCloud is pre-integrated in the generated Makefile.
+
+You need to set a valid sonarcloud token before executing make in 
+your .bashrc file:
+
+export SONARCLOUD_TOKEN=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+## Getting a token
+Go to https://sonarcloud.io.  Then login with your GitHub account.
+
+Next, go to https://sonarcloud.io/account/security/.
+In the Generate Tokens dialog, enter a name for your token
+and click the "Generate" button.
+
+
+## sonar-project.properties
+
+Controlls the executing of an analysis run.  Documentation is
+avaiable [here](https://docs.sonarqube.org/latest/analysis/analysis-parameters/).
+The default configuration provides extended support for code coverage and go lint reporting.
+
+
+## Run by hand using
+The sonarcloud.sh is provided for executing an analysis by hand.
+
+```bash
+sonarcloud.sh
+
+```
+# FOSSA
+FOSSA provides free license scanning for open-source projects.   The [fossa-cli](https://github.com/fossas/fossa-cli/) documentation is covers basic usage.  Support for fossa is pre-integrated in the generated Makefile.  You need to set a valid fossa token before executing make in your .bashrc file:
+
+export FOSSA_API_KEY=XXXXXXXXXXXXXXXXXXXXXXXXXX
+
+## Getting a token
+
+Go to https://app.fossa.com.  Then login with your GitHub account.
+
+Next, go to https://app.fossa.com/account/settings/integrations/api_tokens.  
+Use the "Add another Token" button to create your token.
+
+
+## Run by hand using
+
+```bash
+FOSSA_API_KEY=$(FOSSA_API_KEY) fossa analyze
+```
+
+# GitHub token
+
+Go to https://github.com and login.  Then go to, https://github.com/settings/tokens.
+Use the "Generate new token" button to create your new token.
+
+```bash
+# add line to your .bashrc
+export GITHUB_ACCESS_TOKEN=####################
+```

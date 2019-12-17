@@ -1,2 +1,2 @@
 
-GRANT ALL ON DATABASE acme TO acmeAdmin;
+GRANT ALL ON DATABASE Acme TO AcmeAdmin;

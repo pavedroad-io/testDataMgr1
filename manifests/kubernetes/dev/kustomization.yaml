@@ -1,0 +1,11 @@
+
+bases:
+  - db
+  - users
+
+commonLabels:
+  pavedroad.env: dev
+
+commonAnnotations:
+  pavedroad.kustomize.base: users/manifests/kubernetes/dev
+  pavedroad.kustomize.bases: "users,db"

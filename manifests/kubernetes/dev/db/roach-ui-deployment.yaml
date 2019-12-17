@@ -2,10 +2,6 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  annotations:
-    roadctlVersion: alphav1
-    pavedroad: www.pavedroad.io
-  creationTimestamp: null
   labels:
     pavedroad.service: roach-ui
   name: roach-ui

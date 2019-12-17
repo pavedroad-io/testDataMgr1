@@ -1,0 +1,53 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: users
+spec:
+  replicas: 3
+  strategy: {}
+  selector:
+    matchLabels:
+      pavedroad.service: users
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        pavedroad.service: users
+    spec:
+      initContainers:
+      - image: busybox:1.28
+        name: wait-for-cockroach
+        command: ['sh', '-c', 'until nslookup roach-ui; do echo waiting for roach-ui; sleep 2; done;']
+      - image: localhost:32000/acme/usersinitdb:0.0
+        env:
+        - name: COCKROACH_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: cockroach-configmap
+              key: host-ip
+        name: usersdbinit
+      containers:
+      - image: localhost:32000/acme/users:0.0
+        env:
+        - name: HTTP_IP_ADDR
+          valueFrom:
+            configMapKeyRef:
+              name: users-configmap
+              key: ip
+        - name: HTTP_IP_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: users-configmap
+              key: port
+        - name: APP_DB_IP
+          valueFrom:
+            configMapKeyRef:
+              name: users-configmap
+              key: database-ip
+        name: users
+        ports:
+        - containerPort: 8081
+        resources: {}
+      restartPolicy: Always
+status: {}
