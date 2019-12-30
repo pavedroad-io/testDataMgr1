@@ -1,4 +1,3 @@
-
 // users_test.go
 
 package main
@@ -20,25 +19,24 @@ import (
 )
 
 const (
-	Updated         string = "updated"
-	Created         string = "created"
-	Active          string = "active"
-  UsersURL string = "/api/v1/namespace/pavedroad.io/users/%s"
+	Updated  string = "updated"
+	Created  string = "created"
+	Active   string = "active"
+	UsersURL string = "/api/v1/namespace/pavedroad.io/users/%s"
 )
 
-var newUsersJSON=`{
-	"usersuuid": "503e571c-115d-4320-8268-b251ef0302d7",
-	"id": "2dnAeu0CaYVyDZI",
-	"updated": "2019-12-16T17:13:06-05:00",
-	"created": "2019-12-16T17:13:06-05:00",
+var newUsersJSON = `{
+	"usersuuid": "ce272b4c-2cbb-4782-a615-2b044deb8686",
+	"id": "EpENHRGMvczU8Hx",
+	"updated": "2019-12-20T14:46:09-05:00",
+	"created": "2019-12-20T14:46:09-05:00",
 	"metadata": {
-		"id": "WOa6Tk5JuPCd9ZU",
+		"id": "93fzn16nX22nsbE",
 		"test": {
-			"key": "WOUtttwtzrG5JqY"
+			"key": "gswgYlL54DgSJu9"
 		}
 	}
 }`
-
 
 var a UsersApp
 
@@ -69,12 +67,22 @@ func ensureTableExists() {
 }
 
 func clearTable() {
-	a.DB.Exec("DELETE FROM Acme.Users")
+
+	if _, err := a.DB.Exec("DELETE FROM Acme.Users"); err != nil {
+		fmt.Println("Table clear failed:", err)
+	}
 }
 
 func clearDB() {
-	a.DB.Exec("DROP DATABASE IF EXISTS Acme")
-	a.DB.Exec("CREATE DATABASE Acme")
+
+	if _, err := a.DB.Exec("DROP DATABASE IF EXISTS Acme"); err != nil {
+		fmt.Println("Drop table:", err)
+	}
+
+	if _, err := a.DB.Exec("CREATE DATABASE Acme"); err != nil {
+		fmt.Println("Create table:", err)
+	}
+
 }
 
 const tableCreationQuery = `
@@ -83,10 +91,8 @@ CREATE TABLE IF NOT EXISTS Acme.users (
     users JSONB
 );`
 
-
 const indexCreate = `
 CREATE INDEX IF NOT EXISTS usersIdx ON Acme.users USING GIN (users);`
-
 
 func TestEmptyTable(t *testing.T) {
 	clearTable()
@@ -121,14 +127,20 @@ func checkResponseCode(t *testing.T, expected, actual int) {
 func TestGetWithBadUserUUID(t *testing.T) {
 	clearTable()
 
-	req, _ := http.NewRequest("GET",
+	req, err := http.NewRequest("GET",
 		"/api/v1/namespace/pavedroad.io/users/43ae99c9", nil)
+	if err != nil {
+		fmt.Println("NewRequest:", err)
+	}
 	response := executeRequest(req)
 
 	checkResponseCode(t, http.StatusBadRequest, response.Code)
 
 	var m map[string]string
-	json.Unmarshal(response.Body.Bytes(), &m)
+	err = json.Unmarshal(response.Body.Bytes(), &m)
+	if err != nil {
+		fmt.Println("Unmarshal issue:", err)
+	}
 	if m["error"] != "400: invalid UUID: 43ae99c9" {
 		t.Errorf("Expected the 'error' key of the response to be set to '400: invalid UUID: 43ae99c9'. Got '%s'", m["error"])
 	}
@@ -140,17 +152,18 @@ func TestGetWithBadUserUUID(t *testing.T) {
 //
 func TestGetWrongUUID(t *testing.T) {
 	clearTable()
-  nt := NewUsers()
-  addUsers(nt)
-  badUid := "00000000-d01d-4c09-a4e7-59026d143b89"
+	nt := NewUsers()
+	addUsers(nt)
+	badUID := "00000000-d01d-4c09-a4e7-59026d143b89"
 
-	statement := fmt.Sprintf(UsersURL, badUid)
+	statement := fmt.Sprintf(UsersURL, badUID)
 
 	req, _ := http.NewRequest("GET", statement, nil)
 	response := executeRequest(req)
 
 	checkResponseCode(t, http.StatusNotFound, response.Code)
 }
+
 // TestCreate
 // Use sample data from newUsersJSON) to create
 // a new record.
@@ -162,14 +175,20 @@ func TestCreateUsers(t *testing.T) {
 
 	payload := []byte(newUsersJSON)
 
-	req, _ := http.NewRequest("POST", "/api/v1/namespace/pavedroad.io/users", bytes.NewBuffer(payload))
+	req, err := http.NewRequest("POST", "/api/v1/namespace/pavedroad.io/users", bytes.NewBuffer(payload))
+	if err != nil {
+		fmt.Println("NewRequest Post:", err)
+	}
 	response := executeRequest(req)
 
 	checkResponseCode(t, http.StatusCreated, response.Code)
 
 	var m map[string]interface{}
 	//var md map[string]interface{}
-	json.Unmarshal(response.Body.Bytes(), &m)
+	err = json.Unmarshal(response.Body.Bytes(), &m)
+	if err != nil {
+		fmt.Println("Unmarshal issue:", err)
+	}
 
 	//Test we can decode the data
 	cs, ok := m["created"].(string)
@@ -205,10 +224,11 @@ func TestMarshallUsers(t *testing.T) {
 // Inserts a new user into the database and returns the UUID
 // for the record that was created
 //
-func addUsers(t *users) (string) {
+func addUsers(t *users) string {
 
-  statement := fmt.Sprintf("INSERT INTO Acme.users(users) VALUES('%s') RETURNING usersUUID", newUsersJSON)
-  rows, er1 := a.DB.Query(statement)
+	statement := `INSERT INTO Acme.users(users) VALUES($1) RETURNING usersUUID`
+
+	rows, er1 := a.DB.Query(statement, newUsersJSON)
 
 	if er1 != nil {
 		log.Printf("Insert failed error %s", er1)
@@ -217,24 +237,27 @@ func addUsers(t *users) (string) {
 
 	defer rows.Close()
 
-  for rows.Next() {
-    err := rows.Scan(&t.UsersUUID)
-    if err != nil {
-      return ""
-    }
-  }
+	for rows.Next() {
+		err := rows.Scan(&t.UsersUUID)
+		if err != nil {
+			return ""
+		}
+	}
 
-  return t.UsersUUID
+	return t.UsersUUID
 }
 
 // NewUsers
 // Create a new instance of Users
 // Iterate over the struct setting random values
-// 
+//
 func NewUsers() (t *users) {
-	var n users
-  json.Unmarshal([]byte(newUsersJSON), &n) 
-	return &n
+	var N users
+	err := json.Unmarshal([]byte(newUsersJSON), &N)
+	if err != nil {
+		fmt.Println("Unmarshal issue:", err)
+	}
+	return &N
 }
 
 //test getting a users
@@ -245,14 +268,15 @@ func TestGetUsers(t *testing.T) {
 	statement := fmt.Sprintf(UsersURL, uid)
 
 	req, err := http.NewRequest("GET", statement, nil)
-  if err != nil {
+	if err != nil {
 		panic(err)
-  }
+	}
 
 	response := executeRequest(req)
 
 	checkResponseCode(t, http.StatusOK, response.Code)
 }
+
 // TestUpdateUsers
 func TestUpdateusers(t *testing.T) {
 	clearTable()
@@ -260,10 +284,16 @@ func TestUpdateusers(t *testing.T) {
 	uid := addUsers(nt)
 
 	statement := fmt.Sprintf(UsersURL, uid)
-	req, _ := http.NewRequest("GET", statement, nil)
+	req, err := http.NewRequest("GET", statement, nil)
+	if err != nil {
+		fmt.Println("NewRequest Get:", err)
+	}
 	response := executeRequest(req)
 
-	json.Unmarshal(response.Body.Bytes(), &nt)
+	err = json.Unmarshal(response.Body.Bytes(), &nt)
+	if err != nil {
+		fmt.Println("Unmarshal issue:", err)
+	}
 
 	ut := nt
 
@@ -275,17 +305,25 @@ func TestUpdateusers(t *testing.T) {
 		panic(err)
 	}
 
-	req, _ = http.NewRequest("PUT", statement, strings.NewReader(string(jb)))
+	req, err = http.NewRequest("PUT", statement, strings.NewReader(string(jb)))
+	if err != nil {
+		fmt.Println("NewRequest Put:", err)
+	}
+
 	response = executeRequest(req)
 
 	checkResponseCode(t, http.StatusOK, response.Code)
 
 	var m map[string]interface{}
-	json.Unmarshal(response.Body.Bytes(), &m)
+	err = json.Unmarshal(response.Body.Bytes(), &m)
 
-//	if m["active"] != "eslaf" {
-//		t.Errorf("Expected active to be eslaf. Got %v", m["active"])
-//	}
+	if err != nil {
+		fmt.Println("Unmarshal issue:", err)
+	}
+
+	//	if m["active"] != "eslaf" {
+	//		t.Errorf("Expected active to be eslaf. Got %v", m["active"])
+	//	}
 }
 
 func TestDeleteusers(t *testing.T) {
